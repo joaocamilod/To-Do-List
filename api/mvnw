@@ -1,0 +1,18 @@
+#!/bin/sh
+
+if [ -z "$JAVA_HOME" ] ; then
+  JAVACMD=`which java`
+  if [ -z "$JAVACMD" ] ; then
+    echo "Error: JAVA_HOME not set and java not found in PATH" >&2
+    exit 1
+  fi
+else
+  JAVACMD="$JAVA_HOME/bin/java"
+fi
+
+MAVEN_WRAPPER_JAR=".mvn/wrapper/maven-wrapper.jar"
+MAVEN_WRAPPER_PROPERTIES=".mvn/wrapper/maven-wrapper.properties"
+
+DOWNLOAD_URL=$(grep 'distributionUrl' "$MAVEN_WRAPPER_PROPERTIES" | sed 's/distributionUrl=//')
+
+exec "$JAVACMD" -jar "$MAVEN_WRAPPER_JAR" "$@"
