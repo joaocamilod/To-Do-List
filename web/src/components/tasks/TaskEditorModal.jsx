@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useTaskContext } from "../../contexts/TaskContext";
 
 const PRIORITIES = [
@@ -23,10 +23,10 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
     description: task?.description || "",
     listId: task?.listId || defaultListId || "",
     dueDate: task?.dueDate
-      ? format(new Date(task.dueDate), "yyyy-MM-dd'T'HH:mm")
+      ? format(parseISO(task.dueDate), "yyyy-MM-dd'T'HH:mm")
       : "",
     reminder: task?.reminder
-      ? format(new Date(task.reminder), "yyyy-MM-dd'T'HH:mm")
+      ? format(parseISO(task.reminder), "yyyy-MM-dd'T'HH:mm")
       : "",
     priority: task?.priority || "none",
     myDay: task?.myDay || false,
@@ -87,8 +87,8 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
       const payload = {
         ...form,
         title: form.title.trim(),
-        dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
-        reminder: form.reminder ? new Date(form.reminder).toISOString() : null,
+        dueDate: form.dueDate ? `${form.dueDate}:00` : null,
+        reminder: form.reminder ? `${form.reminder}:00` : null,
         listId: form.listId || null,
         checklist: subtasks.map((s) => ({
           title: s.title,

@@ -4,38 +4,46 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useRef,
 } from "react";
 import { authService } from "../services/authService";
 
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem("todo_token"));
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("todo_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
+  const validated = useRef(false);
 
   useEffect(() => {
-    const validateSession = async () => {
-      const savedToken = localStorage.getItem("todo_token");
-      const savedUser = localStorage.getItem("todo_user");
+    if (validated.current) return;
+    validated.current = true;
 
-      if (savedToken && savedUser) {
-        try {
-          const parsedUser = JSON.parse(savedUser);
-          await authService.getMe();
-          setToken(savedToken);
-          setUser(parsedUser);
-        } catch {
-          localStorage.removeItem("todo_token");
-          localStorage.removeItem("todo_user");
-          setToken(null);
-          setUser(null);
-        }
-      }
+    const savedToken = localStorage.getItem("todo_token");
+    const savedUser = localStorage.getItem("todo_user");
+
+    if (!savedToken || !savedUser) {
       setLoading(false);
-    };
+      return;
+    }
 
-    validateSession();
+    authService
+      .getMe()
+      .catch(() => {
+        localStorage.removeItem("todo_token");
+        localStorage.removeItem("todo_user");
+        setToken(null);
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (email, password) => {

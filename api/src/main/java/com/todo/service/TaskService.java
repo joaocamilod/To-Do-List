@@ -21,8 +21,8 @@ public class TaskService {
     private final UserRepository userRepository;
     private final TaskListRepository listRepository;
 
-    public List<TaskResponse> getAll(String email, Long listId, Boolean completed,
-                                      Boolean myDay, Boolean planned, String search) {
+    @Transactional(readOnly = true)
+    public List<TaskResponse> getAll(String email, Long listId, Boolean completed, Boolean myDay, Boolean planned, String search) {
         User user = getUser(email);
         List<Task> tasks;
 
@@ -38,12 +38,13 @@ public class TaskService {
         } else if (listId != null) {
             tasks = taskRepository.findByUserIdAndListIdOrderByPositionAscCreatedAtDesc(user.getId(), listId);
         } else {
-            tasks = taskRepository.findByUserIdAndListIdIsNullOrderByPositionAscCreatedAtDesc(user.getId());
+            tasks = taskRepository.findByUserIdOrderByPositionAscCreatedAtDesc(user.getId());
         }
 
         return tasks.stream().map(TaskResponse::from).toList();
     }
 
+    @Transactional(readOnly = true)
     public TaskResponse getById(String email, Long id) {
         Task task = getOwnedTask(email, id);
         return TaskResponse.from(task);

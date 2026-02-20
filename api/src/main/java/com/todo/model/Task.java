@@ -1,5 +1,6 @@
 package com.todo.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -69,6 +70,12 @@ public class Task {
     private LocalDateTime updatedAt;
 
     public enum Priority {
-        NONE, LOW, MEDIUM, HIGH
+        NONE, LOW, MEDIUM, HIGH;
+
+        @JsonCreator
+        public static Priority fromString(String value) {
+            if (value == null) return NONE;
+            return valueOf(value.toUpperCase());
+        }
     }
 }

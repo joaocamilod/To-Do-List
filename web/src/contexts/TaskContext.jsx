@@ -4,6 +4,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useRef,
 } from "react";
 import { taskService } from "../services/taskService";
 import { listService } from "../services/listService";
@@ -12,21 +13,45 @@ import { useAuth } from "./AuthContext";
 export const TaskContext = createContext(null);
 
 export function TaskProvider({ children }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const hasFetched = useRef(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchLists();
-      fetchTasks();
-    } else {
+    if (authLoading) return;
+
+    if (isAuthenticated && !hasFetched.current) {
+      hasFetched.current = true;
+      loadAll();
+    }
+
+    if (!isAuthenticated) {
+      hasFetched.current = false;
       setTasks([]);
       setLists([]);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
+
+  async function loadAll() {
+    setLoading(true);
+    try {
+      const [listsData, tasksData] = await Promise.all([
+        listService.getAll(),
+        taskService.getAll(),
+      ]);
+      setLists(listsData);
+      setTasks(tasksData);
+      setError(null);
+    } catch (err) {
+      console.error("Erro ao carregar dados:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const fetchLists = useCallback(async () => {
     try {
@@ -67,18 +92,11 @@ export function TaskProvider({ children }) {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const toggleComplete = useCallback(
-    async (id) => {
-      const task = tasks.find((t) => t.id === id);
-      if (!task) return;
-      const updated = await taskService.update(id, {
-        completed: !task.completed,
-      });
-      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
-      return updated;
-    },
-    [tasks],
-  );
+  const toggleComplete = useCallback(async (id) => {
+    const updated = await taskService.toggleComplete(id);
+    setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    return updated;
+  }, []);
 
   const createList = useCallback(async (listData) => {
     const created = await listService.create(listData);
