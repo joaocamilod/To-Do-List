@@ -2,8 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-card: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+}
+
+.dark {
+  --color-bg: #0e1419;
+  --color-surface: #141922;
+  --color-card: #12161b;
+  --color-border: #1e2a38;
+  --color-text-primary: #e6eef6;
+  --color-text-secondary: #9aa7b3;
+  --color-text-muted: #4d5f72;
+}
+
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -12,20 +34,36 @@
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
     font-family:
-      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+      "Inter",
+      system-ui,
+      -apple-system,
+      "Segoe UI",
       sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
     min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   #root {
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
+  }
+
+  :focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
   }
 }
 
@@ -34,40 +72,115 @@
     width: 4px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+    @apply bg-gray-300 dark:bg-gray-700 rounded-full;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400 dark:bg-gray-500;
+    @apply bg-gray-400 dark:bg-gray-600;
   }
 
   .btn-primary {
-    @apply px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg
-           font-medium transition-colors duration-200 focus:outline-none
-           focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-1.5
+           px-4 py-2 rounded-lg text-sm font-semibold
+           bg-primary-600 hover:bg-primary-500 active:bg-primary-700
+           text-white shadow-sm
+           transition-all duration-[160ms] ease-smooth
+           focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed
+           select-none;
   }
 
   .btn-secondary {
-    @apply px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600
-           text-gray-800 dark:text-gray-200 rounded-lg font-medium transition-colors
-           duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400
-           focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-1.5
+           px-4 py-2 rounded-lg text-sm font-medium
+           bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700
+           border border-[var(--color-border)]
+           text-[var(--color-text-secondary)]
+           transition-all duration-[160ms] ease-smooth
+           focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed
+           select-none;
   }
 
   .input {
-    @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-           bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
-           placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-200;
+    @apply w-full px-3 py-2 rounded-lg text-sm
+           bg-[var(--color-card)] border border-[var(--color-border)]
+           text-[var(--color-text-primary)]
+           placeholder:text-[var(--color-text-muted)]
+           transition-[border-color,box-shadow] duration-[160ms] ease-smooth
+           focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20;
   }
 
   .task-card {
-    @apply bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700
-           p-4 hover:shadow-md transition-all duration-200 cursor-pointer
-           hover:border-primary-300 dark:hover:border-primary-700;
+    @apply relative bg-[var(--color-card)]
+           rounded-xl border border-[var(--color-border)]
+           p-4 cursor-pointer select-none
+           transition-all duration-[160ms] ease-smooth
+           hover:-translate-y-px hover:shadow-card-hover hover:border-primary-400/40
+           dark:hover:border-primary-600/40;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+           text-[var(--color-text-secondary)]
+           transition-all duration-[160ms] ease-smooth
+           hover:bg-gray-100 dark:hover:bg-gray-800
+           hover:text-[var(--color-text-primary)]
+           focus-visible:ring-2 focus-visible:ring-primary-500;
+  }
+
+  .sidebar-item-active {
+    @apply text-primary-600 dark:text-primary-400 font-semibold;
+    background-color: rgba(37, 99, 235, 0.1);
+  }
+  .dark .sidebar-item-active {
+    background-color: rgba(96, 165, 250, 0.15);
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-overdue {
+    @apply badge text-red-500 dark:text-red-400;
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+  .dark .badge-overdue {
+    background-color: rgba(239, 68, 68, 0.15);
+  }
+
+  .badge-myday {
+    @apply badge text-blue-600 dark:text-blue-400;
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+  .dark .badge-myday {
+    background-color: rgba(59, 130, 246, 0.15);
+  }
+
+  .badge-priority-high {
+    @apply badge text-red-600 dark:text-red-400;
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+  .dark .badge-priority-high {
+    background-color: rgba(239, 68, 68, 0.15);
+  }
+
+  .badge-priority-medium {
+    @apply badge text-yellow-600 dark:text-yellow-400;
+    background-color: rgba(234, 179, 8, 0.1);
+  }
+  .dark .badge-priority-medium {
+    background-color: rgba(250, 204, 21, 0.15);
+  }
+
+  .badge-priority-low {
+    @apply badge text-green-600 dark:text-green-400;
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+  .dark .badge-priority-low {
+    background-color: rgba(34, 197, 94, 0.15);
   }
 
   .priority-low {
@@ -79,27 +192,29 @@
   .priority-high {
     @apply text-red-500;
   }
-
-  .sidebar-item-active {
-    @apply bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300;
-  }
 }
 
-.task-completed {
-  animation: completeTask 0.3s ease forwards;
-}
-
-@keyframes completeTask {
-  0% {
-    opacity: 1;
-    transform: scale(1);
+@layer utilities {
+  .bg-app {
+    background-color: var(--color-bg);
   }
-  50% {
-    opacity: 0.6;
-    transform: scale(0.98);
+  .bg-surface {
+    background-color: var(--color-surface);
   }
-  100% {
-    opacity: 0.5;
+  .bg-card {
+    background-color: var(--color-card);
+  }
+  .border-app {
+    border-color: var(--color-border);
+  }
+  .text-primary-app {
+    color: var(--color-text-primary);
+  }
+  .text-secondary-app {
+    color: var(--color-text-secondary);
+  }
+  .text-muted-app {
+    color: var(--color-text-muted);
   }
 }
 
@@ -109,4 +224,39 @@
 
 .dnd-over {
   @apply border-2 border-dashed border-primary-400 dark:border-primary-500;
+}
+.dark .hover\:bg-white\/8:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.dark .hover\:bg-white\/5:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.task-completed {
+  animation: completeTask 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes completeTask {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(0.985);
+  }
+  100% {
+    opacity: 0.55;
+  }
+}
+
+.sidebar-collapsed .sidebar-label,
+.sidebar-collapsed .sidebar-section-title,
+.sidebar-collapsed .sidebar-kbd,
+.sidebar-collapsed .sidebar-user-info {
+  @apply hidden;
+}
+
+.sidebar-collapsed .sidebar-item {
+  @apply justify-center px-2;
 }

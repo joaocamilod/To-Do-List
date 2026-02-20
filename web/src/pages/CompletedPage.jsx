@@ -1,12 +1,19 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import TaskListView from "../components/tasks/TaskListView";
 import { useTasks } from "../hooks/useTasks";
-import { useTaskContext } from "../contexts/TaskContext";
 
 export default function CompletedPage() {
-  const { openEdit } = useOutletContext();
+  const { openEdit, setPageSubtitle } = useOutletContext();
   const { tasks, loading } = useTasks({ completed: true });
+
+  useEffect(() => {
+    const label =
+      tasks.length === 1
+        ? "1 tarefa concluída"
+        : `${tasks.length} tarefas concluídas`;
+    setPageSubtitle(label);
+  }, [tasks.length, setPageSubtitle]);
 
   if (loading) {
     return (
@@ -18,15 +25,12 @@ export default function CompletedPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="px-4 pt-4 pb-2">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {tasks.length} tarefa(s) concluída(s)
-        </p>
-      </div>
       <TaskListView
         tasks={tasks}
         onTaskClick={openEdit}
-        emptyMessage="Nenhuma tarefa concluída ainda. Continue assim! 💪"
+        emptyTitle="Nenhuma tarefa concluída ainda"
+        emptyDescription="Marque tarefas como concluídas para vê-las aqui."
+        emptyVariant="completed"
       />
     </div>
   );

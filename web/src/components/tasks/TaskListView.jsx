@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -15,13 +15,30 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import TaskCard from "./TaskCard";
+import EmptyState from "../ui/EmptyState";
 import { useTaskContext } from "../../contexts/TaskContext";
-import { useState } from "react";
+
+const VARIANT_MAP = {
+  "Nenhuma tarefa para hoje": "myday",
+  "Nenhuma tarefa planejada": "planned",
+  "Nenhuma tarefa concluída": "completed",
+};
+
+function resolveVariant(msg) {
+  for (const [key, variant] of Object.entries(VARIANT_MAP)) {
+    if (msg?.startsWith(key)) return variant;
+  }
+  return "tasks";
+}
 
 export default function TaskListView({
   tasks,
   onTaskClick,
-  emptyMessage = "Nenhuma tarefa aqui ainda.",
+  emptyTitle = "Tudo limpo por aqui!",
+  emptyDescription = "Adicione uma nova tarefa para começar.",
+  emptyMessage,
+  emptyVariant,
+  onAddTask,
 }) {
   const { setTasks } = useTaskContext();
   const [activeId, setActiveId] = useState(null);
@@ -39,12 +56,11 @@ export default function TaskListView({
     ({ active, over }) => {
       setActiveId(null);
       if (!over || active.id === over.id) return;
-
       setTasks((prev) => {
-        const oldIndex = prev.findIndex((t) => t.id === active.id);
-        const newIndex = prev.findIndex((t) => t.id === over.id);
-        if (oldIndex === -1 || newIndex === -1) return prev;
-        return arrayMove(prev, oldIndex, newIndex);
+        const oldIdx = prev.findIndex((t) => t.id === active.id);
+        const newIdx = prev.findIndex((t) => t.id === over.id);
+        if (oldIdx === -1 || newIdx === -1) return prev;
+        return arrayMove(prev, oldIdx, newIdx);
       });
     },
     [setTasks],
@@ -53,26 +69,18 @@ export default function TaskListView({
   const activeTask = activeId ? tasks.find((t) => t.id === activeId) : null;
 
   if (!tasks || tasks.length === 0) {
+    const variant =
+      emptyVariant ?? resolveVariant(emptyMessage ?? emptyDescription);
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-          <svg
-            className="w-8 h-8 text-gray-300 dark:text-gray-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-            />
-          </svg>
-        </div>
-        <p className="text-gray-400 dark:text-gray-500 text-sm">
-          {emptyMessage}
-        </p>
+      <div className="flex items-center justify-center min-h-[calc(100dvh-4rem)]">
+        <EmptyState
+          variant={variant}
+          title={emptyTitle}
+          description={emptyMessage ?? emptyDescription}
+          cta={onAddTask ? "Adicionar Tarefa" : undefined}
+          onCta={onAddTask}
+          hint="Pressione N para criar uma nova tarefa rapidamente"
+        />
       </div>
     );
   }
@@ -95,9 +103,11 @@ export default function TaskListView({
         </div>
       </SortableContext>
 
-      <DragOverlay>
+      <DragOverlay
+        dropAnimation={{ duration: 160, easing: "cubic-bezier(.2,.8,.2,1)" }}
+      >
         {activeTask && (
-          <div className="shadow-2xl rotate-1 opacity-90">
+          <div className="rotate-1 opacity-90 shadow-modal">
             <TaskCard task={activeTask} />
           </div>
         )}

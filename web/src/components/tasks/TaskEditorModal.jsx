@@ -1,27 +1,128 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { format, parseISO } from "date-fns";
 import { useTaskContext } from "../../contexts/TaskContext";
+import { useToast } from "../../contexts/ToastContext";
+import DateTimeInput from "../ui/DateTimeInput";
 
 const PRIORITIES = [
-  { value: "none", label: "Nenhuma", color: "text-gray-400" },
+  { value: "none", label: "Nenhuma", color: "text-[var(--color-text-muted)]" },
   { value: "low", label: "Baixa", color: "text-green-500" },
   { value: "medium", label: "Média", color: "text-yellow-500" },
   { value: "high", label: "Alta", color: "text-red-500" },
 ];
 
+function ToggleCheck({ checked, onChange, label, id }) {
+  return (
+    <label
+      htmlFor={id}
+      className="flex items-center gap-2.5 cursor-pointer select-none group"
+    >
+      <div className="relative">
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="sr-only peer"
+        />
+        <div
+          className={`
+            w-9 h-5 rounded-full border-2 transition-all duration-[160ms] ease-smooth
+            peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500/50 peer-focus-visible:ring-offset-1
+            ${
+              checked
+                ? "bg-primary-600 border-primary-600"
+                : "bg-[var(--color-border)] border-[var(--color-border)]"
+            }
+          `}
+        />
+        <div
+          className={`
+            absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow
+            transition-transform duration-[160ms] ease-smooth
+            ${checked ? "translate-x-4" : "translate-x-0"}
+          `}
+        />
+      </div>
+      <span className="text-sm text-[var(--color-text-primary)]">{label}</span>
+    </label>
+  );
+}
+
+function SubtaskItem({ sub, onToggle, onRemove }) {
+  return (
+    <li className="flex items-center gap-2.5 group py-0.5">
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={sub.completed}
+        onClick={() => onToggle(sub.id)}
+        className="flex-shrink-0 w-9 h-9 flex items-center justify-center -ml-1 rounded-lg focus-visible:ring-2 focus-visible:ring-primary-500/50"
+        aria-label={sub.completed ? "Desmarcar subtarefa" : "Marcar subtarefa"}
+      >
+        <span
+          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-[160ms]
+            ${
+              sub.completed
+                ? "bg-primary-600 border-primary-600"
+                : "border-[var(--color-text-muted)] hover:border-primary-500"
+            }`}
+        >
+          {sub.completed && (
+            <svg
+              className="w-2.5 h-2.5 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={3}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4.5 12.75l6 6 9-13.5"
+              />
+            </svg>
+          )}
+        </span>
+      </button>
+      <span
+        className={`flex-1 text-sm leading-snug ${sub.completed ? "line-through text-[var(--color-text-muted)]" : "text-[var(--color-text-primary)]"}`}
+      >
+        {sub.title}
+      </span>
+      <button
+        type="button"
+        onClick={() => onRemove(sub.id)}
+        aria-label="Remover subtarefa"
+        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 p-1.5 rounded-lg hover:bg-red-500/12 text-[var(--color-text-muted)] hover:text-red-500 transition-all"
+      >
+        <svg
+          className="w-3.5 h-3.5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </button>
+    </li>
+  );
+}
+
 export default function TaskEditorModal({ task, onClose, defaultListId }) {
-  const {
-    createTask,
-    updateTask,
-    lists,
-    createTask: ctx_createTask,
-  } = useTaskContext();
+  const { createTask, updateTask, lists } = useTaskContext();
+  const { addToast } = useToast();
   const isEdit = !!task;
 
   const [form, setForm] = useState({
     title: task?.title || "",
     description: task?.description || "",
-    listId: task?.listId || defaultListId || "",
+    listId: task?.listId ?? defaultListId ?? "",
     dueDate: task?.dueDate
       ? format(parseISO(task.dueDate), "yyyy-MM-dd'T'HH:mm")
       : "",
@@ -38,6 +139,7 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const titleRef = useRef(null);
+  const backdropRef = useRef(null);
 
   useEffect(() => {
     titleRef.current?.focus();
@@ -51,10 +153,39 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  useEffect(() => {
+    const el = backdropRef.current;
+    if (!el) return;
+    const focusable = el.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const trap = (e) => {
+      if (e.key !== "Tab") return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    el.addEventListener("keydown", trap);
+    return () => el.removeEventListener("keydown", trap);
+  }, []);
+
+  const set = useCallback(
+    (key, value) => setForm((f) => ({ ...f, [key]: value })),
+    [],
+  );
 
   const handleAddSubtask = (e) => {
-    if (e?.preventDefault) e.preventDefault();
+    e?.preventDefault();
     const title = newSubtask.trim();
     if (!title) return;
     setSubtasks((prev) => [
@@ -75,7 +206,7 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!form.title.trim()) {
       setError("O título é obrigatório");
       titleRef.current?.focus();
@@ -97,8 +228,10 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
       };
       if (isEdit) {
         await updateTask(task.id, payload);
+        addToast({ message: "Tarefa atualizada!", type: "success" });
       } else {
         await createTask(payload);
+        addToast({ message: "Tarefa criada!", type: "success" });
       }
       onClose();
     } catch (err) {
@@ -108,37 +241,40 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
     }
   };
 
+  const priorityOption = PRIORITIES.find((p) => p.value === form.priority);
+
   return (
     <div
+      ref={backdropRef}
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
     >
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+        aria-hidden="true"
       />
 
-      <div className="relative w-full sm:max-w-lg bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl animate-slide-up max-h-[90dvh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="relative w-full sm:max-w-2xl bg-surface rounded-t-3xl sm:rounded-2xl shadow-modal animate-scale-in max-h-[95dvh] sm:max-h-[90dvh] flex flex-col border border-app">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-app flex-shrink-0">
           <h2
             id="modal-title"
-            className="text-lg font-semibold text-gray-900 dark:text-gray-100"
+            className="text-base font-semibold text-[var(--color-text-primary)] tracking-tight"
           >
             {isEdit ? "Editar Tarefa" : "Nova Tarefa"}
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition-colors"
-            aria-label="Fechar modal"
+            className="p-2 rounded-xl hover:bg-white/8 text-[var(--color-text-muted)] transition-colors"
+            aria-label="Fechar modal (Esc)"
           >
             <svg
-              className="w-5 h-5"
+              className="w-4 h-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
-              strokeWidth={2}
+              strokeWidth={2.5}
             >
               <path
                 strokeLinecap="round"
@@ -150,11 +286,15 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
         </div>
 
         <form
+          id="task-form"
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto scrollbar-thin p-5 space-y-4"
+          className="flex-1 overflow-y-auto scrollbar-thin px-6 py-5 space-y-5"
         >
           {error && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm animate-shake">
+            <div
+              role="alert"
+              className="flex items-center gap-2.5 p-3 bg-red-500/10 border border-red-500/25 rounded-xl text-red-500 text-sm animate-shake"
+            >
               <svg
                 className="w-4 h-4 flex-shrink-0"
                 fill="none"
@@ -175,9 +315,12 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
           <div>
             <label
               htmlFor="task-title"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5"
             >
-              Título <span className="text-red-500">*</span>
+              Título{" "}
+              <span className="text-red-500 normal-case tracking-normal font-normal">
+                *
+              </span>
             </label>
             <input
               id="task-title"
@@ -186,7 +329,7 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
               placeholder="O que precisa ser feito?"
-              className="input"
+              className="input text-base font-medium"
               maxLength={200}
               required
             />
@@ -195,47 +338,55 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
           <div>
             <label
               htmlFor="task-desc"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5"
             >
-              Descrição
+              Notas
             </label>
             <textarea
               id="task-desc"
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
               placeholder="Adicionar notas ou detalhes..."
-              className="input resize-none"
+              className="input resize-none text-sm"
               rows={3}
               maxLength={2000}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label
                 htmlFor="task-priority"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5"
               >
                 Prioridade
               </label>
-              <select
-                id="task-priority"
-                value={form.priority}
-                onChange={(e) => set("priority", e.target.value)}
-                className="input"
-              >
-                {PRIORITIES.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  id="task-priority"
+                  value={form.priority}
+                  onChange={(e) => set("priority", e.target.value)}
+                  className="input text-sm appearance-none pr-8"
+                >
+                  {PRIORITIES.map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+                <span
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${priorityOption?.color}`}
+                  aria-hidden="true"
+                >
+                  ●
+                </span>
+              </div>
             </div>
 
             <div>
               <label
                 htmlFor="task-list"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5"
               >
                 Lista
               </label>
@@ -243,7 +394,7 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
                 id="task-list"
                 value={form.listId}
                 onChange={(e) => set("listId", e.target.value)}
-                className="input"
+                className="input text-sm"
               >
                 <option value="">Inbox</option>
                 {lists.map((l) => (
@@ -255,128 +406,54 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label
-                htmlFor="task-due"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                Data limite
-              </label>
-              <input
-                id="task-due"
-                type="datetime-local"
-                value={form.dueDate}
-                onChange={(e) => set("dueDate", e.target.value)}
-                className="input text-sm"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="task-reminder"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                Lembrete
-              </label>
-              <input
-                id="task-reminder"
-                type="datetime-local"
-                value={form.reminder}
-                onChange={(e) => set("reminder", e.target.value)}
-                className="input text-sm"
-              />
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <DateTimeInput
+              id="task-due"
+              label="Data limite"
+              value={form.dueDate}
+              onChange={(v) => set("dueDate", v)}
+            />
+            <DateTimeInput
+              id="task-reminder"
+              label="Lembrete"
+              value={form.reminder}
+              onChange={(v) => set("reminder", v)}
+            />
           </div>
 
-          <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={form.myDay}
-                onChange={(e) => set("myDay", e.target.checked)}
-                className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                ☀️ Meu Dia
-              </span>
-            </label>
+          <div className="flex flex-wrap items-center gap-5 py-1">
+            <ToggleCheck
+              id="toggle-myday"
+              checked={form.myDay}
+              onChange={(v) => set("myDay", v)}
+              label="☀️ Meu Dia"
+            />
             {isEdit && (
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={form.completed}
-                  onChange={(e) => set("completed", e.target.checked)}
-                  className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  ✅ Concluída
-                </span>
-              </label>
+              <ToggleCheck
+                id="toggle-completed"
+                checked={form.completed}
+                onChange={(v) => set("completed", v)}
+                label="✅ Concluída"
+              />
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Checklist
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">
+              Checklist{" "}
+              {subtasks.length > 0 &&
+                `(${subtasks.filter((s) => s.completed).length}/${subtasks.length})`}
             </label>
 
             {subtasks.length > 0 && (
-              <ul className="space-y-1.5 mb-2">
+              <ul className="space-y-0.5 mb-3 border border-app rounded-xl px-3 py-1.5">
                 {subtasks.map((sub) => (
-                  <li key={sub.id} className="flex items-center gap-2 group">
-                    <button
-                      type="button"
-                      onClick={() => toggleSubtask(sub.id)}
-                      className={`flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors
-                        ${
-                          sub.completed
-                            ? "bg-primary-600 border-primary-600"
-                            : "border-gray-300 dark:border-gray-600 hover:border-primary-500"
-                        }`}
-                      aria-label={sub.completed ? "Desmarcar" : "Marcar"}
-                    >
-                      {sub.completed && (
-                        <svg
-                          className="w-2.5 h-2.5 text-white"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={3}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M4.5 12.75l6 6 9-13.5"
-                          />
-                        </svg>
-                      )}
-                    </button>
-                    <span
-                      className={`flex-1 text-sm ${sub.completed ? "line-through text-gray-400" : "text-gray-700 dark:text-gray-300"}`}
-                    >
-                      {sub.title}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeSubtask(sub.id)}
-                      className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity"
-                      aria-label="Remover subtarefa"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </li>
+                  <SubtaskItem
+                    key={sub.id}
+                    sub={sub}
+                    onToggle={toggleSubtask}
+                    onRemove={removeSubtask}
+                  />
                 ))}
               </ul>
             )}
@@ -389,17 +466,18 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    handleAddSubtask(e);
+                    handleAddSubtask();
                   }
                 }}
-                placeholder="Adicionar item ao checklist..."
+                placeholder="Adicionar item..."
                 className="input text-sm py-1.5 flex-1"
                 maxLength={200}
+                aria-label="Novo item de checklist"
               />
               <button
                 type="button"
                 onClick={handleAddSubtask}
-                className="btn-secondary text-sm py-1.5 px-3"
+                className="btn-secondary text-sm py-1.5 px-3 whitespace-nowrap"
                 disabled={!newSubtask.trim()}
               >
                 + Adicionar
@@ -408,7 +486,7 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
           </div>
         </form>
 
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-app flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -418,8 +496,10 @@ export default function TaskEditorModal({ task, onClose, defaultListId }) {
             Cancelar
           </button>
           <button
+            form="task-form"
+            type="submit"
             onClick={handleSubmit}
-            className="btn-primary"
+            className="btn-primary min-w-[96px]"
             disabled={saving}
           >
             {saving ? (

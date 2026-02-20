@@ -1,11 +1,21 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import TaskListView from "../components/tasks/TaskListView";
 import { useTasks } from "../hooks/useTasks";
 
 export default function PlannedPage() {
-  const { openEdit } = useOutletContext();
+  const { openEdit, setPageSubtitle } = useOutletContext();
   const { tasks, loading } = useTasks({ planned: true });
+
+  const count = tasks.filter((t) => !t.completed).length;
+
+  useEffect(() => {
+    const label =
+      count === 1
+        ? "1 tarefa com data futura"
+        : `${count} tarefas com data futura`;
+    setPageSubtitle(label);
+  }, [count, setPageSubtitle]);
 
   if (loading) {
     return (
@@ -17,15 +27,12 @@ export default function PlannedPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="px-4 pt-4 pb-2">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {tasks.filter((t) => !t.completed).length} tarefa(s) com data futura
-        </p>
-      </div>
       <TaskListView
         tasks={tasks}
         onTaskClick={openEdit}
-        emptyMessage="Nenhuma tarefa planejada. Defina uma data limite no editor."
+        emptyTitle="Nenhuma tarefa planejada"
+        emptyDescription="Defina uma data limite numa tarefa para ela aparecer aqui."
+        emptyVariant="planned"
       />
     </div>
   );

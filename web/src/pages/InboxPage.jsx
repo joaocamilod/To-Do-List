@@ -1,13 +1,20 @@
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import TaskListView from "../components/tasks/TaskListView";
 import { useTasks } from "../hooks/useTasks";
 
 export default function InboxPage() {
-  const { openEdit } = useOutletContext();
+  const { openEdit, setPageSubtitle } = useOutletContext();
   const { tasks, loading } = useTasks({ listId: null });
 
   const inbox = tasks.filter((t) => !t.listId);
+  const pending = inbox.filter((t) => !t.completed).length;
+
+  useEffect(() => {
+    const label =
+      pending === 1 ? "1 tarefa pendente" : `${pending} tarefas pendentes`;
+    setPageSubtitle(label);
+  }, [pending, setPageSubtitle]);
 
   if (loading) {
     return (
@@ -19,15 +26,12 @@ export default function InboxPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="px-4 pt-4 pb-2">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {inbox.filter((t) => !t.completed).length} tarefa(s) pendente(s)
-        </p>
-      </div>
       <TaskListView
         tasks={inbox}
         onTaskClick={openEdit}
-        emptyMessage="Inbox vazio! Use 'N' para criar uma nova tarefa."
+        emptyTitle="Inbox vazio!"
+        emptyDescription="Todas as tarefas foram concluídas ou organizadas."
+        hint="Pressione N para criar uma nova tarefa rapidamente"
       />
     </div>
   );

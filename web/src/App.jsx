@@ -4,6 +4,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { TaskProvider } from "./contexts/TaskContext";
 import { WebSocketProvider } from "./contexts/WebSocketContext";
+import { ToastProvider } from "./contexts/ToastContext";
 import MainLayout from "./components/layout/MainLayout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -47,13 +48,15 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <TaskProvider>
-          <WebSocketProvider>
-            <AppContent />
-          </WebSocketProvider>
-        </TaskProvider>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <TaskProvider>
+            <WebSocketProvider>
+              <AppContent />
+            </WebSocketProvider>
+          </TaskProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }
